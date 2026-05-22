@@ -13,9 +13,9 @@ const _schema = i.schema({
       imageURL: i.string().optional(),
       type: i.string().optional(),
     }),
-    todos: i.entity({
-      text: i.string(),
-      done: i.boolean(),
+    favorites: i.entity({
+      fontToken: i.string().indexed(),
+      deviceId: i.string().indexed(),
       createdAt: i.number(),
     }),
   },
@@ -34,11 +34,7 @@ const _schema = i.schema({
       },
     },
   },
-  rooms: {
-    todos: {
-      presence: i.entity({}),
-    },
-  },
+  rooms: {},
 });
 
 // This helps TypeScript display nicer intellisense

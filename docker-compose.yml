@@ -1,0 +1,9 @@
+services:
+  app:
+    build:
+      context: .
+      args:
+        VITE_INSTANT_APP_ID: ${VITE_INSTANT_APP_ID}
+    ports:
+      - "3000:80"
+    restart: unless-stopped
