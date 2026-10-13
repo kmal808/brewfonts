@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import type { BrewFont } from "../types";
-import { detectLocalFont } from "../lib/brewApi";
+import { detectLocalFont, fontFamilyStack } from "../lib/brewApi";
 import { HeartIcon, CopyIcon, CheckIcon } from "./Icons";
 
 interface Props {
@@ -28,23 +28,32 @@ export function FontCard({
   onToggleSelect,
   onToggleFavorite,
 }: Props) {
-  const [isInstalled, setIsInstalled] = useState<boolean | null>(null);
+  const [resolvedFamily, setResolvedFamily] = useState<string | null | undefined>(
+    undefined
+  );
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    detectLocalFont(font.token, font.name).then((result) => {
-      if (!cancelled) setIsInstalled(result);
+    detectLocalFont(font.token, font.name).then((family) => {
+      if (!cancelled) setResolvedFamily(family);
     });
     return () => {
       cancelled = true;
     };
   }, [font.token, font.name]);
 
-  const customFamily = `bf-${font.token}`;
-  const fontStyle = isInstalled
-    ? { fontFamily: `"${customFamily}", ${font.category === "mono" ? "monospace" : "sans-serif"}` }
-    : undefined;
+  const isInstalled =
+    resolvedFamily === undefined ? null : resolvedFamily !== null;
+
+  // Always apply the brew family stack so installed fonts render immediately;
+  // once detection finishes, prefer the confirmed family name.
+  const fontStyle = {
+    fontFamily: fontFamilyStack(
+      font,
+      resolvedFamily === undefined ? null : resolvedFamily
+    ),
+  };
 
   const handleCopy = (e: React.MouseEvent) => {
     e.stopPropagation();

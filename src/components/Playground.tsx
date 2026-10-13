@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import type { BrewFont } from "../types";
-import { detectLocalFont } from "../lib/brewApi";
+import { detectLocalFont, fontFamilyStack } from "../lib/brewApi";
 import { ArrowLeftIcon, CopyIcon, CheckIcon } from "./Icons";
 
 interface Props {
@@ -15,15 +15,22 @@ export function Playground({ fonts, onClose }: Props) {
   const [text, setText] = useState(DEFAULT_TEXT);
   const [fontSize, setFontSize] = useState(28);
   const [lineHeight, setLineHeight] = useState(1.5);
-  const [loadedFonts, setLoadedFonts] = useState<Set<string>>(new Set());
+  const [resolvedFamilies, setResolvedFamilies] = useState<
+    Record<string, string | null>
+  >({});
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
     fonts.forEach((font) => {
-      detectLocalFont(font.token, font.name).then((ok) => {
-        if (ok) setLoadedFonts((prev) => new Set([...prev, font.token]));
+      detectLocalFont(font.token, font.name).then((family) => {
+        if (cancelled) return;
+        setResolvedFamilies((prev) => ({ ...prev, [font.token]: family }));
       });
     });
+    return () => {
+      cancelled = true;
+    };
   }, [fonts]);
 
   const handleCopy = (font: BrewFont) => {
@@ -103,10 +110,12 @@ export function Playground({ fonts, onClose }: Props) {
       {/* Font comparison panels */}
       <div className="flex-1 overflow-y-auto">
         {fonts.map((font, i) => {
-          const isLoaded = loadedFonts.has(font.token);
-          const customFamily = `bf-${font.token}`;
-          const fallback =
-            font.category === "mono" ? "monospace" : "sans-serif";
+          const resolved = resolvedFamilies[font.token];
+          const checked = Object.prototype.hasOwnProperty.call(
+            resolvedFamilies,
+            font.token
+          );
+          const isLoaded = Boolean(resolved);
 
           return (
             <div
@@ -124,7 +133,12 @@ export function Playground({ fonts, onClose }: Props) {
                 <span className="text-xs font-mono text-white/20">
                   {font.token}
                 </span>
-                {isLoaded ? (
+                {!checked ? (
+                  <span className="flex items-center gap-1 text-[10px] text-white/20">
+                    <span className="w-1.5 h-1.5 rounded-full bg-white/20 animate-pulse inline-block" />
+                    Checking
+                  </span>
+                ) : isLoaded ? (
                   <span className="flex items-center gap-1 text-[10px] text-emerald-400/80">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
                     Installed
@@ -153,12 +167,10 @@ export function Playground({ fonts, onClose }: Props) {
                 <pre
                   className="text-white/75 whitespace-pre-wrap break-words"
                   style={{
-                    fontFamily: isLoaded
-                      ? `"${customFamily}", ${fallback}`
-                      : fallback,
+                    fontFamily: fontFamilyStack(font, resolved ?? null),
                     fontSize: `${fontSize}px`,
                     lineHeight,
-                    opacity: isLoaded ? 1 : 0.5,
+                    opacity: !checked || isLoaded ? 1 : 0.5,
                   }}
                 >
                   {text}
